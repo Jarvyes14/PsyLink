@@ -1,0 +1,10 @@
+import type { overview, adminOverview } from '@/services/overview';
+import type { getProfessional } from '@/services/profiles';
+import type { Actor } from '@/lib/auth';
+type Jsonify<T> = T extends Date ? string : T extends object ? { [K in keyof T]: Jsonify<T[K]> } : T;
+export type User = Jsonify<Actor>;
+export type Overview = Jsonify<Awaited<ReturnType<typeof overview>>>;
+export type AdminData = Jsonify<Awaited<ReturnType<typeof adminOverview>>>;
+export type Professional = Jsonify<Awaited<ReturnType<typeof getProfessional>>>;
+export type Connection = Overview['matches'][number];
+export type Message = { id: string; senderId: string; body: string; readAt: string | null; createdAt: string };

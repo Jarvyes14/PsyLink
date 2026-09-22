@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  PATIENT
+  PSYCHOLOGIST
+  ADMIN
+}
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+enum InterestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  name String
+  role Role
+  active Boolean @default(true)
+  consentAt DateTime
+  onboardingComplete Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient PatientProfile?
+  psychologist PsychologistProfile?
+  sessions Session[]
+  resets PasswordReset[]
+  sentMessages Message[]
+  reports Report[] @relation("Reporter")
+  reportsAgainst Report[] @relation("Reported")
+  blocks Block[] @relation("Blocker")
+  blockedBy Block[] @relation("Blocked")
+  uploads StoredFile[]
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+  @@index([expiresAt])
+}
+model PasswordReset {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PatientProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferences PatientPreference?
+  interests Interest[]
+  favorites Favorite[]
+  passes PassedProfile[]
+  matches Match[]
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PatientPreference {
+  id String @id @default(cuid())
+  patientId String @unique
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  goals String[]
+  expectations String[]
+  modality String @default("ANY")
+  city String @default("")
+  budget Int @default(1000)
+  availability String @default("ANY")
+  language String @default("Español")
+  gender String @default("ANY")
+  minExperience Int @default(0)
+  approaches String[]
+  communication String @default("ANY")
+  frequency String @default("Semanal")
+  strictBudget Boolean @default(false)
+  strictModality Boolean @default(false)
+  styles Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PsychologistProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pronouns String @default("")
+  gender String @default("No especificado")
+  bio String @default("")
+  city String @default("")
+  modality String @default("ONLINE")
+  languages String[]
+  yearsExperience Int @default(0)
+  education String @default("")
+  university String @default("")
+  license String @default("")
+  certifications String @default("")
+  price Int @default(600)
+  duration Int @default(50)
+  population String @default("Adultos")
+  ageRange String @default("18+")
+  experience String @default("")
+  contactMethods String @default("Mensajes en PsyLink")
+  accessibility String @default("")
+  tools String @default("")
+  firstSession String @default("")
+  expectations String @default("")
+  goalSetting String @default("")
+  homework String @default("")
+  processLength String @default("Se acuerda individualmente y puede variar.")
+  philosophy String @default("")
+  styles Json
+  acceptingPatients Boolean @default(true)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  photoId String?
+  specialties PsychologistSpecialty[]
+  approaches PsychologistApproach[]
+  availability Availability[]
+  verifications ProfessionalVerification[]
+  interests Interest[]
+  favorites Favorite[]
+  passes PassedProfile[]
+  matches Match[]
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([verificationStatus, acceptingPatients])
+  @@index([price, yearsExperience])
+}
+model Specialty {
+  id String @id
+  name String @unique
+  psychologists PsychologistSpecialty[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PsychologistSpecialty {
+  psychologistId String
+  specialtyId String
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  specialty Specialty @relation(fields: [specialtyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([psychologistId, specialtyId])
+}
+model TherapeuticApproach {
+  id String @id
+  name String @unique
+  description String
+  psychologists PsychologistApproach[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model PsychologistApproach {
+  psychologistId String
+  approachId String
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  approach TherapeuticApproach @relation(fields: [approachId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([psychologistId, approachId])
+}
+model Availability {
+  id String @id @default(cuid())
+  psychologistId String
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  startsAt DateTime
+  endsAt DateTime
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([psychologistId, startsAt])
+  @@index([startsAt])
+}
+model Interest {
+  id String @id @default(cuid())
+  patientId String
+  psychologistId String
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  status InterestStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([patientId, psychologistId])
+}
+model Favorite {
+  id String @id @default(cuid())
+  patientId String
+  psychologistId String
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([patientId, psychologistId])
+}
+model PassedProfile {
+  patientId String
+  psychologistId String
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([patientId, psychologistId])
+}
+model Match {
+  id String @id @default(cuid())
+  patientId String
+  psychologistId String
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  active Boolean @default(true)
+  conversation Conversation?
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([patientId, psychologistId])
+}
+model Conversation {
+  id String @id @default(cuid())
+  matchId String @unique
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  messages Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Message {
+  id String @id @default(cuid())
+  conversationId String
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId String
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([conversationId, createdAt])
+}
+model Appointment {
+  id String @id @default(cuid())
+  matchId String
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  patientId String
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  psychologistId String
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  availabilityId String
+  availability Availability @relation(fields: [availabilityId], references: [id])
+  startsAt DateTime
+  endsAt DateTime
+  status AppointmentStatus @default(REQUESTED)
+  patientConfirmedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([psychologistId, startsAt])
+  @@index([patientId, startsAt])
+}
+model StoredFile {
+  id String @id @default(cuid())
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  storageKey String @unique
+  mime String
+  name String
+  kind String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model ProfessionalVerification {
+  id String @id @default(cuid())
+  psychologistId String
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  documentId String
+  license String
+  status VerificationStatus @default(PENDING)
+  reviewNote String @default("")
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
+}
+model Report {
+  id String @id @default(cuid())
+  reporterId String
+  targetId String
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  target User @relation("Reported", fields: [targetId], references: [id], onDelete: Cascade)
+  reason String
+  status String @default("OPEN")
+  resolution String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+}
+model Block {
+  id String @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([blockerId, blockedId])
+}
+model RateLimit {
+  key String @id
+  count Int @default(1)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([expiresAt])
+}
