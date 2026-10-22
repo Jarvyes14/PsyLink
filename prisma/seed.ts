@@ -10,12 +10,12 @@ async function main() {
   const passwordHash = await hashPassword(process.env.DEMO_PASSWORD);
   for (const [id, name] of specialties) await db.specialty.upsert({ where: { id }, create: { id, name }, update: { name } });
   for (const [id, name, description] of approaches) await db.therapeuticApproach.upsert({ where: { id }, create: { id, name, description }, update: { name, description } });
-  const userBase = { passwordHash, consentAt: new Date(), onboardingComplete: true };
-  await db.user.upsert({ where: { email: 'admin@psylink.demo' }, create: { ...userBase, name: 'Administración Demo', email: 'admin@psylink.demo', role: 'ADMIN' }, update: {} });
+  const userBase = { passwordHash, consentAt: new Date(), onboardingComplete: true, isDemo: true };
+  await db.user.upsert({ where: { email: 'admin@psylink.demo' }, create: { ...userBase, name: 'Administración Demo', email: 'admin@psylink.demo', role: 'ADMIN' }, update: { isDemo: true } });
   const patients = [];
   for (let i = 0; i < 10; i++) {
     const email = i === 0 ? 'patient@psylink.demo' : `patient${i + 1}@psylink.demo`;
-    const u = await db.user.upsert({ where: { email }, create: { ...userBase, email, name: ['Alex García', 'Sam Rivera', 'Dani Cruz', 'Andrea Ortiz', 'Pablo Méndez', 'Ana Ruiz', 'Luis Pérez', 'Julia López', 'Carlos Díaz', 'Laura Ramos'][i], role: 'PATIENT', patient: { create: { preferences: { create: { goals: [specialties[i % 10][0], 'emotions'], expectations: ['Quiero herramientas prácticas'], modality: 'ONLINE', budget: 900, availability: 'AFTERNOON', approaches: [], styles: { ...defaultStyles, practice: 20, formality: 80 } } } } } }, update: {}, include: { patient: true } });
+    const u = await db.user.upsert({ where: { email }, create: { ...userBase, email, name: ['Alex García', 'Sam Rivera', 'Dani Cruz', 'Andrea Ortiz', 'Pablo Méndez', 'Ana Ruiz', 'Luis Pérez', 'Julia López', 'Carlos Díaz', 'Laura Ramos'][i], role: 'PATIENT', patient: { create: { preferences: { create: { goals: [specialties[i % 10][0], 'emotions'], expectations: ['Quiero herramientas prácticas'], modality: 'ONLINE', budget: 900, availability: 'AFTERNOON', approaches: [], styles: { ...defaultStyles, practice: 20, formality: 80 } } } } } }, update: { isDemo: true }, include: { patient: true } });
     patients.push(u.patient!);
   }
   const psychologists = [];
@@ -39,16 +39,16 @@ async function main() {
       philosophy: 'Cada historia merece ser escuchada con atención. El proceso se construye en colaboración y puede ajustarse a lo que necesites.',
       styles, verificationStatus: i < 19 ? 'VERIFIED' : i < 22 ? 'PENDING' : i === 22 ? 'REJECTED' : 'UNVERIFIED',
       specialties: { create: [...new Set([s[0], 'emotions'])].map(specialtyId => ({ specialtyId })) }, approaches: { create: [{ approachId: a[0] }] },
-    } } }, update: {}, include: { psychologist: true } });
+    } } }, update: { isDemo: true }, include: { psychologist: true } });
     const p = u.psychologist!; psychologists.push(p);
     for (let day = 1; day <= 14; day++) {
       const date = new Date(); date.setUTCDate(date.getUTCDate() + day); date.setUTCHours(19 + (day % 3), 0, 0, 0);
       await db.availability.upsert({ where: { psychologistId_startsAt: { psychologistId: p.id, startsAt: date } }, create: { psychologistId: p.id, startsAt: date, endsAt: new Date(date.getTime() + 50 * 60000) }, update: {} });
     }
-    if (i >= 19 && i < 23 && !(await db.professionalVerification.count({ where: { psychologistId: p.id } }))) {
+    if (i < 23 && !(await db.professionalVerification.count({ where: { psychologistId: p.id } }))) {
       const bytes = Buffer.from('%PDF-1.4\n% PsyLink demo credential. Not a real professional license.\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF');
       const file = await db.storedFile.create({ data: { ownerId: u.id, kind: 'document', name: 'credencial-ficticia-demo.pdf', mime: 'application/pdf', storageKey: await storage.put(bytes) } });
-      await db.professionalVerification.create({ data: { psychologistId: p.id, documentId: file.id, license: p.license, status: i === 22 ? 'REJECTED' : 'PENDING', reviewNote: i === 22 ? 'Documento demo incompleto. Adjunta la constancia completa.' : '' } });
+      await db.professionalVerification.create({ data: { psychologistId: p.id, documentId: file.id, license: p.license, status: i === 22 ? 'REJECTED' : i < 19 ? 'VERIFIED' : 'PENDING', reviewNote: i === 22 ? 'Documento demo incompleto. Adjunta la constancia completa.' : i < 19 ? 'Revisión ficticia para demostración; no valida una credencial real.' : '', ...(i < 19 || i === 22 ? { reviewedAt: new Date() } : {}) } });
     }
   }
   for (let i = 0; i < 4; i++) {

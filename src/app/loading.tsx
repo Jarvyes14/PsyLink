@@ -1,1 +1,1 @@
-export default function Loading() { return <main className="loading-page" aria-label="Cargando PsyLink"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></main>; }
+export default function Loading() { return <main className="loading-page" aria-label="Cargando Psicomatch"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></main>; }

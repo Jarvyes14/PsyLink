@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { cookies } from 'next/headers';
 import { db } from './db';
 import { assert } from './errors';
+import { appUrl } from './env';
 import type { Role } from '@prisma/client';
 const scrypt = promisify(scryptCallback);
 export const SESSION_COOKIE = 'psylink_session';
@@ -19,7 +20,7 @@ export async function verifyPassword(password: string, encoded: string) {
   const expected = Buffer.from(hash, 'hex');
   return expected.length === candidate.length && timingSafeEqual(expected, candidate);
 }
-export const userSelect = { id: true, email: true, name: true, role: true, active: true, onboardingComplete: true, createdAt: true, patient: { select: { id: true, preferences: true } }, psychologist: { select: { id: true, verificationStatus: true } } } as const;
+export const userSelect = { id: true, email: true, name: true, role: true, isDemo: true, active: true, onboardingComplete: true, createdAt: true, patient: { select: { id: true, preferences: true } }, psychologist: { select: { id: true, verificationStatus: true } } } as const;
 export async function currentUser() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -37,7 +38,7 @@ export async function createSession(userId: string) {
   const token = randomBytes(32).toString('base64url');
   const expires = new Date(Date.now() + 7 * 86400000);
   await db.session.create({ data: { userId, tokenHash: digest(token), expiresAt: expires } });
-  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: process.env.APP_URL?.startsWith('https://') ?? false, path: '/', expires });
+  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: process.env.VERCEL === '1' || appUrl().startsWith('https://'), path: '/', expires });
 }
 export async function logout() {
   const jar = await cookies();
@@ -54,6 +55,12 @@ export async function rateLimit(key: string, limit = 30, intervalMs = 60000) {
   if (Math.random() < .02) await db.rateLimit.deleteMany({ where: { expiresAt: { lt: new Date() } } });
 }
 export function checkOrigin(request: Request) {
-  const expected = new URL(process.env.APP_URL || 'http://127.0.0.1:3000').origin;
-  assert(request.headers.get('origin') === expected, 403, 'Origen de solicitud no permitido.');
+  const requestUrl = new URL(request.url);
+  const origin = request.headers.get('origin');
+  const allowed = new Set([requestUrl.origin, appUrl()]);
+  if (requestUrl.hostname === '127.0.0.1' || requestUrl.hostname === 'localhost') {
+    const localHost = requestUrl.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+    allowed.add(`${requestUrl.protocol}//${localHost}${requestUrl.port ? `:${requestUrl.port}` : ''}`);
+  }
+  assert(origin !== null && allowed.has(origin), 403, 'Origen de solicitud no permitido.');
 }

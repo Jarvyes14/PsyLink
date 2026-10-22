@@ -12,7 +12,7 @@ import { patientAction, respondInterest, cancelMatch, conversationAccess } from 
 import { bookAppointment, updateAppointment } from '@/services/appointments';
 import { overview, adminOverview } from '@/services/overview';
 import { sendRecovery } from '@/services/mail';
-import { storage, inspectFile } from '@/services/storage';
+import { storage, inspectFile, MAX_FILE_BYTES } from '@/services/storage';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ path: string[] }> };
@@ -101,9 +101,9 @@ async function route(request: Request, context: Context) {
   if (resource === 'files') {
     if (method === 'POST') {
       assert(actor.psychologist, 403, 'Esta función es para profesionales.');
-      assert(Number(request.headers.get('content-length') || 0) <= 6 * 1024 * 1024, 413, 'El archivo es demasiado grande.');
+      assert(Number(request.headers.get('content-length') || 0) <= 4.5 * 1024 * 1024, 413, 'El archivo es demasiado grande.');
       const form = await request.formData(); const file = form.get('file'); const kind = z.enum(['photo', 'document']).parse(form.get('kind'));
-      assert(file instanceof File && file.size <= 5 * 1024 * 1024, 400, 'Selecciona un archivo de hasta 5 MB.');
+      assert(file instanceof File && file.size <= MAX_FILE_BYTES, 400, 'Selecciona un archivo de hasta 4 MB.');
       const bytes = Buffer.from(await file.arrayBuffer()); const mime = inspectFile(bytes, kind);
       const storageKey = await storage.put(bytes);
       try { const f = await db.storedFile.create({ data: { ownerId: actor.id, storageKey, mime, kind, name: file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) } }); return { id: f.id }; } catch (e) { await storage.remove(storageKey); throw e; }
@@ -136,7 +136,7 @@ async function route(request: Request, context: Context) {
       await tx.block.upsert({ where: { blockerId_blockedId: { blockerId: actor.id, blockedId: targetId } }, create: { blockerId: actor.id, blockedId: targetId }, update: {} });
       const matches = await tx.match.findMany({ where: { OR: [{ patient: { userId: actor.id }, psychologist: { userId: targetId } }, { patient: { userId: targetId }, psychologist: { userId: actor.id } }] } });
       await tx.match.updateMany({ where: { id: { in: matches.map(m => m.id) } }, data: { active: false } });
-      await tx.appointment.updateMany({ where: { matchId: { in: matches.map(m => m.id) }, status: { in: ['REQUESTED', 'CONFIRMED'] } }, data: { status: 'CANCELLED' } });
+      await tx.appointment.updateMany({ where: { matchId: { in: matches.map(m => m.id) }, startsAt: { gt: new Date() }, status: { in: ['REQUESTED', 'CONFIRMED'] } }, data: { status: 'CANCELLED' } });
     }); return { ok: true };
   }
   if (resource === 'account' && method === 'DELETE') {
@@ -156,7 +156,7 @@ async function route(request: Request, context: Context) {
     if (id === 'users' && action && method === 'POST') {
       const { active } = z.object({ active: z.boolean() }).parse(await json(request));
       const target = await db.user.findUnique({ where: { id: action } }); assert(target && target.role !== 'ADMIN', 400, 'No puedes desactivar administradores.');
-      await db.$transaction(async tx => { await tx.user.update({ where: { id: action }, data: { active } }); if (!active) { await tx.session.deleteMany({ where: { userId: action } }); await tx.appointment.updateMany({ where: { OR: [{ patient: { userId: action } }, { psychologist: { userId: action } }], status: { in: ['REQUESTED', 'CONFIRMED'] } }, data: { status: 'CANCELLED' } }); } }); return { ok: true };
+      await db.$transaction(async tx => { await tx.user.update({ where: { id: action }, data: { active } }); if (!active) { await tx.session.deleteMany({ where: { userId: action } }); await tx.appointment.updateMany({ where: { OR: [{ patient: { userId: action } }, { psychologist: { userId: action } }], startsAt: { gt: new Date() }, status: { in: ['REQUESTED', 'CONFIRMED'] } }, data: { status: 'CANCELLED' } }); } }); return { ok: true };
     }
     if (id === 'reports' && action && method === 'POST') {
       const { resolution } = z.object({ resolution: z.string().trim().min(5).max(1000) }).parse(await json(request));

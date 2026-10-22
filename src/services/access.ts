@@ -7,16 +7,17 @@ export async function assertNotBlocked(a: string, b: string) {
   assert(!blocked, 403, 'Esta conexión no está disponible.');
 }
 export async function authorizedMatch(actor: Actor, matchId: string, active = true) {
-  const match = await db.match.findUnique({ where: { id: matchId }, include: { patient: { include: { user: { select: { id: true, name: true, active: true } } } }, psychologist: { include: { user: { select: { id: true, name: true, active: true } } } }, conversation: true } });
+  const match = await db.match.findUnique({ where: { id: matchId }, include: { patient: { include: { user: { select: { id: true, name: true, active: true, isDemo: true } } } }, psychologist: { include: { user: { select: { id: true, name: true, active: true, isDemo: true } } } }, conversation: true } });
   assert(match && (match.patient.userId === actor.id || match.psychologist.userId === actor.id), 404, 'Conexión no encontrada.');
   assert(!active || match.active, 403, 'Esta conexión ya no está activa.');
   assert(!active || (match.patient.user.active && match.psychologist.user.active), 403, 'Esta cuenta no está disponible.');
+  assert(!active || (match.patient.user.isDemo === actor.isDemo && match.psychologist.user.isDemo === actor.isDemo), 403, 'Esta conexión no está disponible.');
   if (active) await assertNotBlocked(match.patient.userId, match.psychologist.userId);
   return match;
 }
 export function professionalInclude() {
   return {
-    user: { select: { id: true, name: true } },
+    user: { select: { id: true, name: true, isDemo: true } },
     specialties: { include: { specialty: true } },
     approaches: { include: { approach: true } },
     availability: {

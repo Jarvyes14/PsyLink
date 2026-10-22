@@ -29,7 +29,7 @@ export async function discover(actor: Actor, query: URLSearchParams) {
   assert(actor.patient, 403, 'Esta función es para pacientes.');
   const filters = filterSchema.parse(Object.fromEntries(query));
   const blocked = await db.block.findMany({ where: { OR: [{ blockerId: actor.id }, { blockedId: actor.id }] } });
-  const profiles = await db.psychologistProfile.findMany({ where: { user: { active: true, onboardingComplete: true, id: { notIn: blocked.flatMap(b => [b.blockerId, b.blockedId]) } }, acceptingPatients: true, passes: { none: { patientId: actor.patient.id } } }, include: professionalInclude() });
+  const profiles = await db.psychologistProfile.findMany({ where: { user: { active: true, onboardingComplete: true, isDemo: actor.isDemo, id: { notIn: blocked.flatMap(b => [b.blockerId, b.blockedId]) } }, acceptingPatients: true, passes: { none: { patientId: actor.patient.id } } }, include: professionalInclude() });
   const preferences = actor.patient.preferences;
   return profiles.filter(p => matchesFilters(p, filters, preferences)).map(p => ({ ...p, compatibility: preferences ? compatibility(p, preferences) : null })).sort((a, b) => (b.compatibility?.score ?? 0) - (a.compatibility?.score ?? 0));
 }
@@ -37,7 +37,7 @@ export async function getProfessional(actor: Actor, id: string) {
   const p = await db.psychologistProfile.findUnique({ where: { id }, include: professionalInclude() });
   assert(p, 404, 'Perfil no encontrado.');
   const owner = await db.user.findUniqueOrThrow({ where: { id: p.userId }, select: { active: true, onboardingComplete: true } });
-  assert((owner.active && owner.onboardingComplete) || p.userId === actor.id || actor.role === 'ADMIN', 404, 'Perfil no disponible.');
+  assert((owner.active && owner.onboardingComplete && p.user.isDemo === actor.isDemo) || p.userId === actor.id || actor.role === 'ADMIN', 404, 'Perfil no disponible.');
   await assertNotBlocked(actor.id, p.userId);
   return { ...p, compatibility: actor.patient?.preferences ? compatibility(p, actor.patient.preferences) : null };
 }

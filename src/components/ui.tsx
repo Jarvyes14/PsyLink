@@ -4,7 +4,7 @@ import { ArrowUpRight, Check, ShieldCheck, X, Sprout } from 'lucide-react';
 import Link from 'next/link';
 import { statusLabel } from '@/domain/catalog';
 import type { ReactNode } from 'react';
-export function Brand() { return <Link href="/" className="brand" aria-label="PsyLink, inicio"><span className="brand-mark"><Sprout size={25} strokeWidth={1.8} /></span>PsyLink<span className="brand-period">.</span></Link>; }
+export function Brand() { return <Link href="/" className="brand" aria-label="Psicomatch, inicio"><span className="brand-mark"><Sprout size={25} strokeWidth={1.8} /></span>Psicomatch<span className="brand-period">.</span></Link>; }
 export function Avatar({ name, photoId, large = false }: { name: string; photoId?: string | null; large?: boolean }) { return <div className={`avatar ${large ? 'avatar-large' : ''}`} style={{ '--avatar-hue': `${name.charCodeAt(0) * 13 % 80 + 270}` } as React.CSSProperties}>{photoId ? <img src={`/api/files/${photoId}`} alt={`Fotografía de ${name}`} /> : <span aria-hidden="true">{name.split(' ').map(n => n[0]).slice(0, 2).join('')}</span>}</div>; }
 export function Badge({ status }: { status: string }) { return <span className={`badge ${status.toLowerCase()}`}>{status === 'VERIFIED' ? <ShieldCheck size={14} /> : <span className="status-mark" />}{statusLabel[status] || status}</span>; }
 export function PageHeading({ eyebrow, title, description, children }: { eyebrow?: string; title: string; description?: string; children?: ReactNode }) { return <header className="page-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="subtle">{description}</p>}</div>{children}</header>; }

@@ -2,9 +2,13 @@
   "name": "psylink",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
+    "build:vercel": "prisma generate && prisma migrate deploy && next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -21,6 +25,7 @@
     "@prisma/client": "6.19.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tailwindcss/postcss": "^4.1.18",
+    "@vercel/blob": "^2.8.0",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.468.0",
     "next": "16.3.5",

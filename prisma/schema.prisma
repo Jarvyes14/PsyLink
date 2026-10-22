@@ -33,6 +33,7 @@ model User {
   passwordHash String
   name String
   role Role
+  isDemo Boolean @default(false)
   active Boolean @default(true)
   consentAt DateTime
   onboardingComplete Boolean @default(false)
