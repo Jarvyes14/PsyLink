@@ -32,3 +32,17 @@ test('phone navigation keeps exploration and sign in accessible', async ({ page 
   await expect(page.getByRole('link', { name: /Guardados/ })).toBeInViewport();
   await expect(page.getByRole('link', { name: /Iniciar sesión/ })).toBeInViewport();
 });
+
+test('primary and secondary actions are visually distinct and clearly named', async ({ page }) => {
+  await page.goto('/');
+  const primary = page.getByRole('link', { name: 'Explorar psicólogos sin cuenta' });
+  const secondary = page.getByRole('link', { name: 'Iniciar sesión' });
+  await expect(primary).toBeVisible();
+  await expect(secondary).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Crear perfil profesional' })).toBeVisible();
+  const primaryColor = await primary.evaluate(element => getComputedStyle(element).backgroundColor);
+  const secondaryColor = await secondary.evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(primaryColor).not.toBe(secondaryColor);
+  expect(await primary.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  expect(await secondary.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(40);
+});
