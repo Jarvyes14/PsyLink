@@ -4,7 +4,9 @@ import { cookies } from 'next/headers';
 import { db } from './db';
 import { assert } from './errors';
 import { appUrl } from './env';
-import type { Role } from '@prisma/client';
+import type { Prisma, Role } from '@prisma/client';
+import { createSupabaseServerClient, supabaseAuthConfigured } from './supabase/server';
+import { actorFromIdentity } from './actor-api';
 const scrypt = promisify(scryptCallback);
 export const SESSION_COOKIE = 'psylink_session';
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -21,13 +23,20 @@ export async function verifyPassword(password: string, encoded: string) {
   return expected.length === candidate.length && timingSafeEqual(expected, candidate);
 }
 export const userSelect = { id: true, email: true, name: true, role: true, isDemo: true, active: true, onboardingComplete: true, createdAt: true, patient: { select: { id: true, preferences: true } }, psychologist: { select: { id: true, verificationStatus: true } } } as const;
-export async function currentUser() {
+export type Actor = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+export async function currentUser(): Promise<Actor | null> {
+  if (supabaseAuthConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getUser();
+    const identity = data.user;
+    if (error || !identity?.email || !identity.email_confirmed_at) return null;
+    return await actorFromIdentity(identity) as Actor | null;
+  }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = await db.session.findUnique({ where: { tokenHash: digest(token) }, include: { user: { select: userSelect } } });
   return session && session.expiresAt > new Date() && session.user.active ? session.user : null;
 }
-export type Actor = NonNullable<Awaited<ReturnType<typeof currentUser>>>;
 export async function requireUser(roles?: Role[]) {
   const user = await currentUser();
   assert(user, 401, 'Inicia sesión para continuar.');
@@ -41,6 +50,7 @@ export async function createSession(userId: string) {
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: process.env.VERCEL === '1' || appUrl().startsWith('https://'), path: '/', expires });
 }
 export async function logout() {
+  if (supabaseAuthConfigured()) { await (await createSupabaseServerClient()).auth.signOut(); return; }
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) await db.session.deleteMany({ where: { tokenHash: digest(token) } });

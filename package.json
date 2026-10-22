@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "prisma generate && next build --webpack",
-    "build:vercel": "prisma generate && prisma migrate deploy && next build --webpack",
+    "build:vercel": "prisma generate --no-engine && next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -24,6 +24,8 @@
   "dependencies": {
     "@prisma/client": "6.19.2",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@vercel/blob": "^2.8.0",
     "dotenv": "^17.2.3",

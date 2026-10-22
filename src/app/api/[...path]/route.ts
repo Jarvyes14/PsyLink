@@ -13,10 +13,44 @@ import { bookAppointment, updateAppointment } from '@/services/appointments';
 import { overview, adminOverview } from '@/services/overview';
 import { sendRecovery } from '@/services/mail';
 import { storage, inspectFile, MAX_FILE_BYTES } from '@/services/storage';
+import { hasSupabaseDataApi, supabaseRows } from '@/lib/supabase-data';
+import { createSupabaseServerClient, supabaseAuthConfigured } from '@/lib/supabase/server';
+import { appUrl } from '@/lib/env';
+import { restRoute } from '@/services/rest-route';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ path: string[] }> };
 async function json(request: Request) { assert(Number(request.headers.get('content-length') || 0) <= 32768, 413, 'Solicitud demasiado grande.'); const text = await request.text(); assert(text.length <= 32768, 413, 'Solicitud demasiado grande.'); try { return JSON.parse(text) as unknown; } catch { throw new AppError(400, 'Formato de solicitud no válido.'); } }
+async function supabaseAuthRoute(id: string | undefined, request: Request) {
+  const input = await json(request);
+  const supabase = await createSupabaseServerClient();
+  if (id === 'register') {
+    const { email, name, password, role } = registerSchema.parse(input);
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${appUrl()}/auth/callback`, data: { name, role } } });
+    assert(!error && data.user, 400, 'No pudimos crear la cuenta. Revisa el correo e inténtalo de nuevo.');
+    return { role, onboardingComplete: false, requiresConfirmation: !data.session };
+  }
+  if (id === 'login') {
+    const { email, password } = loginSchema.parse(input);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    assert(!error, 401, 'Correo o contraseña incorrectos, o correo aún no confirmado.');
+    const user = await currentUser();
+    assert(user, 403, 'No pudimos cargar tu cuenta. Confirma tu correo o contacta a soporte.');
+    return { role: user.role, onboardingComplete: user.onboardingComplete };
+  }
+  if (id === 'forgot') {
+    const { email } = loginSchema.pick({ email: true }).parse(input);
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${appUrl()}/auth/callback?next=/reset-password` });
+    return { message: 'Si existe una cuenta con ese correo, recibirás instrucciones para restablecer tu contraseña.' };
+  }
+  if (id === 'reset') {
+    const { password } = z.object({ password: passwordSchema }).parse(input);
+    const { error } = await supabase.auth.updateUser({ password });
+    assert(!error, 400, 'El enlace no es válido o ya expiró. Solicita uno nuevo.');
+    return { ok: true };
+  }
+  throw new AppError(404, 'Ruta no encontrada.');
+}
 async function route(request: Request, context: Context) {
   const { path } = await context.params;
   const [resource, id, action] = path;
@@ -27,6 +61,7 @@ async function route(request: Request, context: Context) {
     if (id === 'me' && method === 'GET') return { user: await currentUser() };
     if (id === 'logout' && method === 'POST') { await logout(); return { ok: true }; }
     assert(method === 'POST', 405, 'Método no permitido.');
+    if (supabaseAuthConfigured()) return supabaseAuthRoute(id, request);
     // Do not trust arbitrary forwarded IP headers. A global budget plus hashed account budget
     // protects the single-instance MVP; use trusted ingress IP limits for distributed deployment.
     await rateLimit('auth:global', 150, 60000);
@@ -64,6 +99,27 @@ async function route(request: Request, context: Context) {
       return { ok: true };
     }
     throw new AppError(404, 'Ruta no encontrada.');
+  }
+  if (supabaseAuthConfigured()) return restRoute(request, path);
+  if (method === 'GET' && resource === 'discover') return discover(await currentUser(), url.searchParams);
+  if (method === 'GET' && resource === 'profiles' && id) return getProfessional(await currentUser(), id);
+  if (method === 'GET' && resource === 'files' && id) {
+    if (hasSupabaseDataApi() && !(await currentUser())) {
+      const fileQuery = new URLSearchParams({ select: 'id,ownerId,storageKey,mime,name,kind', id: `eq.${id}`, limit: '1' });
+      const [file] = await supabaseRows<{ id: string; ownerId: string; storageKey: string; mime: string; name: string; kind: string }>('StoredFile', fileQuery);
+      assert(file?.kind === 'photo', 404, 'Archivo no encontrado.');
+      const profileQuery = new URLSearchParams({ select: 'id,user:User!PsychologistProfile_userId_fkey(active,onboardingComplete)', photoId: `eq.${id}`, limit: '1' });
+      const [profile] = await supabaseRows<{ user: { active: boolean; onboardingComplete: boolean } }>('PsychologistProfile', profileQuery);
+      assert(profile?.user.active && profile.user.onboardingComplete, 404, 'Archivo no encontrado.');
+      const bytes = await storage.get(file.storageKey);
+      return new NextResponse(new Uint8Array(bytes), { headers: { 'Content-Type': file.mime, 'Content-Disposition': `inline; filename="${file.name}"`, 'Cache-Control': 'public, max-age=300' } });
+    }
+    const file = await db.storedFile.findUnique({ where: { id } }); assert(file, 404, 'Archivo no encontrado.');
+    const isPublicPhoto = file.kind === 'photo' && await db.psychologistProfile.findFirst({ where: { photoId: id, user: { active: true, onboardingComplete: true } } });
+    const viewer = isPublicPhoto ? null : await currentUser();
+    assert(isPublicPhoto || file.ownerId === viewer?.id || viewer?.role === 'ADMIN', 404, 'Archivo no encontrado.');
+    const bytes = await storage.get(file.storageKey);
+    return new NextResponse(new Uint8Array(bytes), { headers: { 'Content-Type': file.mime, 'Content-Disposition': `${file.kind === 'document' ? 'attachment' : 'inline'}; filename="${file.name}"`, 'Cache-Control': 'private, no-store' } });
   }
   const actor = await requireUser();
   if (method !== 'GET') await rateLimit(`write:${actor.id}`, 80);

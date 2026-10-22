@@ -29,6 +29,7 @@ enum InterestStatus {
 }
 model User {
   id String @id @default(cuid())
+  authId String? @unique @db.Uuid
   email String @unique
   passwordHash String
   name String

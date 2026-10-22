@@ -3,6 +3,7 @@ import { currentUser } from '@/lib/auth';
 import { homeFor } from '@/lib/client';
 import { Application } from '@/components/application';
 import { PublicPage } from '@/components/public-pages';
+import { GuestExperience } from '@/components/guest-experience';
 import type { User } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/terms', '/help'];
@@ -17,6 +18,7 @@ export default async function Page({ params }: { params: Promise<{ slug?: string
   const isChat = /^\/messages\/[^/]+$/.test(path);
   if (![...common, ...patient, ...professional, ...admin].includes(path) && !isProfile && !isChat) notFound();
   const actor = await currentUser();
+  if (!actor && (path === '/discover' || path === '/saved' || isProfile)) return <GuestExperience path={path} />;
   if (!actor) redirect('/login');
   if ((patient.includes(path) && actor.role !== 'PATIENT') || (professional.includes(path) && actor.role !== 'PSYCHOLOGIST') || (admin.includes(path) && actor.role !== 'ADMIN')) redirect(homeFor(actor.role));
   if (!actor.onboardingComplete && actor.role !== 'ADMIN' && !['/onboarding', '/professional/onboarding', '/settings'].includes(path)) redirect(actor.role === 'PATIENT' ? '/onboarding' : '/professional/onboarding');
