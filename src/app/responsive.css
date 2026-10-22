@@ -1,0 +1,470 @@
+/* Small screens are the starting point; wider layouts are added below. */
+.public-site,
+.app-layout,
+.app-body,
+.app-main,
+.discovery-column,
+.detail-layout > *,
+.saved-card > *,
+.connection-card > * {
+  min-width: 0;
+}
+
+.page-heading h1,
+.detail-header h1,
+.name-line h2,
+.saved-card h2,
+.connection-card h2 {
+  overflow-wrap: anywhere;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 1023px) {
+  .app-layout,
+  .app-body {
+    display: block;
+  }
+
+  .sidebar,
+  .desktop-only,
+  .topbar-avatar,
+  .demo-pill {
+    display: none !important;
+  }
+
+  .app-topbar {
+    height: 64px;
+    padding: 0 clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .mobile-brand {
+    display: block;
+  }
+
+  .app-main {
+    width: 100%;
+    padding: clamp(1.1rem, 3vw, 2rem) clamp(1rem, 3vw, 2rem) calc(7rem + env(safe-area-inset-bottom));
+  }
+
+  .public-site .app-main {
+    padding-bottom: 2rem;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    z-index: 50;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    background: rgba(255, 253, 249, .97);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(18px);
+    padding: .35rem max(.35rem, env(safe-area-inset-right)) calc(.35rem + env(safe-area-inset-bottom)) max(.35rem, env(safe-area-inset-left));
+  }
+
+  .bottom-nav a {
+    min-width: 0;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .1rem;
+    padding: .2rem .1rem;
+    color: var(--muted);
+    font-size: clamp(.56rem, 1.45vw, .72rem);
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .bottom-nav a.active {
+    color: var(--plum);
+    font-weight: 800;
+  }
+
+  .bottom-nav a > span {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .bottom-nav i {
+    position: absolute;
+    left: 15px;
+    top: -7px;
+    border-radius: 999px;
+    padding: .05rem .3rem;
+    background: var(--rose);
+    color: white;
+    font-size: .55rem;
+    font-style: normal;
+  }
+
+  .mobile-help {
+    position: fixed;
+    z-index: 51;
+    display: block;
+    top: 10px;
+    right: 4.5rem;
+    bottom: auto;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: none;
+  }
+
+  .mobile-help .help-link {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  .mobile-help .help-link svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .topbar-actions {
+    margin-left: auto;
+  }
+
+  .discover-layout,
+  .detail-layout,
+  .dashboard-grid,
+  .account-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-booking,
+  .discovery-aside {
+    position: static;
+  }
+
+  .discovery-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-visual {
+    min-height: clamp(290px, 42vw, 410px);
+  }
+
+  .card-actions {
+    position: static;
+  }
+
+  .saved-grid,
+  .connection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .messaging-layout {
+    grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+  }
+
+  .landing-hero {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-copy {
+    padding: clamp(3rem, 7vw, 5rem) clamp(1.25rem, 5vw, 3rem);
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(3rem, 8vw, 5.4rem);
+  }
+
+  .hero-art {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-header {
+    height: auto;
+    min-height: 66px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .25rem .6rem;
+    padding: .65rem max(1rem, env(safe-area-inset-right)) .55rem max(1rem, env(safe-area-inset-left));
+  }
+
+  .public-header .brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    font-size: clamp(1.28rem, 5vw, 1.6rem);
+  }
+
+  .public-header nav {
+    display: contents;
+  }
+
+  .public-header nav > a:first-child {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .public-header nav > a:nth-child(2):not(.desktop-only) {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .public-header nav > a:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .public-header nav > a:not(.button) {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    font-size: .82rem;
+    font-weight: 700;
+  }
+
+  .public-header nav > a.desktop-only {
+    display: none;
+  }
+
+  .public-header .button {
+    white-space: nowrap;
+  }
+
+  .hero-copy {
+    padding: 3rem 1.2rem 3.5rem;
+  }
+
+  .hero-copy h1 {
+    max-width: 100%;
+    font-size: clamp(2.65rem, 11vw, 3.7rem);
+  }
+
+  .hero-copy .button {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .hero-art {
+    min-height: clamp(340px, 54svh, 470px);
+  }
+
+  .floating-note {
+    top: 1rem;
+    right: 1rem;
+    max-width: 65%;
+  }
+
+  .hero-caption {
+    left: 1.2rem;
+    right: 1.2rem;
+    bottom: 1.3rem;
+  }
+
+  .hero-caption h2 {
+    font-size: clamp(1.65rem, 7vw, 2.1rem);
+  }
+
+  .landing-process,
+  .form-grid,
+  .dashboard-grid,
+  .saved-grid,
+  .connection-grid,
+  .account-layout,
+  .detail-booking,
+  .discovery-aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-trust,
+  .public-footer {
+    margin-inline: 1rem;
+  }
+
+  .auth-layout {
+    min-height: calc(100svh - 104px);
+  }
+
+  .auth-form-wrap {
+    width: 100%;
+    padding: clamp(2rem, 7vw, 3rem) 1rem;
+  }
+
+  .auth-form-wrap > h1,
+  .legal-page > h1 {
+    font-size: clamp(2.15rem, 8vw, 2.8rem);
+  }
+
+  .role-choices {
+    grid-template-columns: minmax(0, 1fr);
+    gap: .7rem;
+  }
+
+  .role-choices button {
+    min-height: 78px;
+  }
+
+  .page-heading h1 {
+    font-size: clamp(2rem, 8vw, 2.4rem);
+  }
+
+  .panel,
+  .saved-card,
+  .connection-card {
+    padding: 1rem;
+  }
+
+  .saved-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .saved-card > .button-row {
+    gap: .5rem;
+  }
+
+  .saved-card > .button-row .button {
+    flex: 1;
+  }
+
+  .detail-header h1 {
+    font-size: clamp(2rem, 8vw, 2.4rem);
+  }
+
+  .detail-booking {
+    gap: .8rem;
+  }
+
+  .profile-visual {
+    min-height: clamp(280px, 85vw, 370px);
+  }
+
+  .profile-visual .avatar {
+    width: clamp(140px, 42vw, 180px);
+    height: clamp(140px, 42vw, 180px);
+  }
+
+  .profile-facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .card-actions {
+    gap: clamp(.8rem, 5vw, 1.6rem);
+    padding: .8rem .2rem;
+  }
+
+  .stats-grid,
+  .stats-grid.four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card strong {
+    font-size: clamp(1.8rem, 7vw, 2.3rem);
+  }
+
+  .list-row,
+  .request-row,
+  .admin-row {
+    flex-wrap: wrap;
+  }
+
+  .list-row .grow {
+    min-width: 0;
+  }
+
+  .list-row > .button,
+  .admin-row > .button {
+    max-width: 100%;
+  }
+
+  .form-navigation {
+    gap: .6rem;
+  }
+
+  .form-navigation .button {
+    min-width: 0;
+  }
+
+  .messaging-layout {
+    height: max(360px, calc(100dvh - 190px - env(safe-area-inset-bottom)));
+  }
+
+  .message-compose {
+    gap: .4rem;
+    padding: .55rem;
+  }
+
+  .appointment-card {
+    grid-template-columns: 65px minmax(0, 1fr);
+    gap: .8rem;
+  }
+
+  .appointment-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .bottom-nav a {
+    font-size: .6rem;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .role-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-grid:not(.four) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-main {
+    max-width: 900px;
+  }
+
+  .auth-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-aside {
+    display: none;
+  }
+
+  .auth-form-wrap {
+    padding: 3rem;
+  }
+
+  .public-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    padding: 2rem;
+  }
+
+  .public-footer p {
+    text-align: right;
+  }
+
+  .public-footer > div,
+  .public-footer > small {
+    grid-column: 1 / -1;
+  }
+
+  .saved-grid,
+  .connection-grid,
+  .detail-booking {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
